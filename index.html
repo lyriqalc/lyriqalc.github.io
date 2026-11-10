@@ -546,11 +546,67 @@
       .s-offline {
         background: var(--S);
       }
-      .dcin h2 {
-        margin-top: 16px;
+      .dc-name-line {
+        display: flex;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: 9px;
+        margin-top: 14px;
+      }
+      .dc-name-line h2 {
         font-family: var(--px);
         font-size: 14px;
-        line-height: 1.4;
+        line-height: 1.5;
+      }
+      .dc-guild-tag {
+        display: inline-flex;
+        align-items: center;
+        gap: 5px;
+        padding: 3px 6px;
+        background: var(--panel);
+        border: 2px solid var(--k);
+        font-size: 17px;
+        line-height: 1;
+      }
+      .dc-guild-tag img {
+        width: 17px;
+        height: 17px;
+        object-fit: contain;
+        image-rendering: pixelated;
+      }
+      .dc-devices {
+        display: inline-flex;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: 5px;
+      }
+      .dc-device {
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        padding: 3px 5px;
+        border: 2px solid var(--k);
+        background: var(--panel);
+        font-size: 16px;
+        line-height: 1;
+      }
+      .dc-device-pixel {
+        width: 10px;
+        height: 10px;
+        display: inline-block;
+        background: var(--S);
+        box-shadow:
+          3px 0 var(--S),
+          0 3px var(--S),
+          3px 3px var(--S);
+        image-rendering: pixelated;
+      }
+      .dc-device.active .dc-device-pixel {
+        background: var(--device-status);
+        box-shadow:
+          3px 0 var(--device-status),
+          0 3px var(--device-status),
+          3px 3px var(--device-status);
       }
       .hdl {
         color: var(--S);
@@ -567,25 +623,6 @@
         padding: 10px;
         background: var(--w);
         border: 3px solid var(--k);
-      }
-      .dc-nameplate {
-        display: inline-flex;
-        align-items: center;
-        gap: 7px;
-        max-width: 100%;
-        margin-top: 10px;
-        padding: 5px 8px;
-        color: var(--w);
-        background: var(--k);
-        border: 3px solid var(--k);
-        font-size: 18px;
-      }
-      .dc-nameplate img {
-        display: block;
-        width: 100%;
-        max-width: 280px;
-        max-height: 74px;
-        object-fit: contain;
       }
       .dc-section-title {
         margin-top: 16px;
@@ -608,11 +645,12 @@
         font-size: 21px;
       }
       .dc-activity img {
-        width: 42px;
-        height: 42px;
+        width: 88px;
+        height: 88px;
         flex: none;
         object-fit: cover;
-        border: 2px solid var(--k);
+        border: 3px solid var(--k);
+        image-rendering: pixelated;
       }
       .dc-activity small {
         display: block;
@@ -1756,10 +1794,48 @@
           : "";
       }
 
+      function nestedValue(source, keys, depth = 0) {
+        if (!source || typeof source !== "object" || depth > 4) return null;
+        for (const key of keys) {
+          if (
+            source[key] !== undefined &&
+            source[key] !== null &&
+            source[key] !== ""
+          )
+            return source[key];
+        }
+        for (const value of Object.values(source)) {
+          if (value && typeof value === "object") {
+            const found = nestedValue(value, keys, depth + 1);
+            if (found !== null) return found;
+          }
+        }
+        return null;
+      }
+
+      function discordImage(value, id, type) {
+        if (!value) return "";
+        if (typeof value === "object") {
+          const direct = value.link || value.url || value.image || value.src;
+          if (typeof direct === "string" && /^https?:\/\//i.test(direct))
+            return direct;
+          value = value.id || value.hash || value.asset || value.banner || "";
+        }
+        if (typeof value !== "string") return "";
+        if (/^https?:\/\//i.test(value)) return value;
+        if (!id || !value) return "";
+        const ext = value.startsWith("a_") ? "gif" : "png";
+        return `https://cdn.discordapp.com/${type}/${id}/${value}.${ext}?size=1024`;
+      }
+
       function profileData() {
         const d = CONFIG.discord;
         const u = live && live.discord_user;
         const lu = lookup && (lookup.user || lookup);
+        const profile =
+          (lookup &&
+            (lookup.user_profile || lookup.profile || lookup.profile_data)) ||
+          {};
         const name =
           (u && (u.global_name || u.display_name || u.username)) ||
           (lu && (lu.global_name || lu.display_name || lu.username)) ||
@@ -1769,59 +1845,56 @@
         if (u && u.avatar)
           avatar = `https://cdn.discordapp.com/avatars/${d.id}/${u.avatar}.${u.avatar.startsWith("a_") ? "gif" : "png"}?size=512`;
         else if (lu && lu.avatar && lu.avatar.link) avatar = lu.avatar.link;
-        const rawBanner = (lu && lu.banner) || (u && u.banner) || "";
-        const bannerHash =
-          typeof rawBanner === "string"
-            ? rawBanner
-            : rawBanner &&
-              (rawBanner.id || rawBanner.hash || rawBanner.asset || "");
-        const bannerLink =
-          typeof rawBanner === "object" && rawBanner
-            ? rawBanner.link || rawBanner.url || rawBanner.image || ""
-            : "";
-        const bannerValue =
-          (typeof bannerLink === "string" && bannerLink) ||
-          (typeof rawBanner === "string" && /^https?:\/\//i.test(rawBanner)
-            ? rawBanner
-            : "") ||
-          (bannerHash
-            ? `https://cdn.discordapp.com/banners/${d.id}/${bannerHash}.${String(bannerHash).startsWith("a_") ? "gif" : "png"}?size=1024`
-            : "");
+        const rawBanner =
+          (u && u.banner) ||
+          nestedValue(profile, ["banner", "banner_url"]) ||
+          nestedValue(lookup, ["banner", "banner_url"]) ||
+          "";
+        const banner = discordImage(rawBanner, d.id, "banners");
         const decoration =
           u && u.avatar_decoration_data && u.avatar_decoration_data.asset
             ? `https://cdn.discordapp.com/avatar-decoration-presets/${u.avatar_decoration_data.asset}.png?size=256`
             : "";
         const activities = (live && live.activities) || [];
+        const guild = u && u.primary_guild;
+        const guildTag = guild && guild.tag ? guild.tag : "";
+        const guildTagIcon =
+          guild && guild.identity_guild_id && guild.badge
+            ? `https://cdn.discordapp.com/clan-badges/${guild.identity_guild_id}/${guild.badge}.png?size=32`
+            : "";
+        const bio =
+          nestedValue(profile, ["bio", "about_me", "description"]) ||
+          nestedValue(lookup, ["bio", "about_me"]) ||
+          "";
         return {
           name,
           handle,
           avatar,
-          banner: typeof bannerValue === "string" ? bannerValue : "",
+          banner,
           decoration,
-          nameplate: u && u.collectibles && u.collectibles.nameplate,
-          nameplateUrl:
-            u &&
-            u.collectibles &&
-            u.collectibles.nameplate &&
-            u.collectibles.nameplate.asset
-              ? `https://cdn.discordapp.com/assets/collectibles/${u.collectibles.nameplate.asset}static.png`
-              : "",
-          guildTag:
-            u && u.primary_guild && u.primary_guild.tag
-              ? u.primary_guild.tag
-              : "",
+          guildTag,
+          guildTagIcon,
           status: live ? live.discord_status : "offline",
           custom: activities.find((a) => a.type === 4),
           activities: activities.filter((a) => a.type !== 4),
           spotify: live && live.listening_to_spotify ? live.spotify : null,
-          bio: (lu && (lu.bio || lu.about_me)) || d.bio,
+          bio: typeof bio === "string" ? bio : d.bio,
+          devices: live
+            ? {
+                desktop: !!live.active_on_discord_desktop,
+                web: !!live.active_on_discord_web,
+                mobile: !!live.active_on_discord_mobile,
+              }
+            : { desktop: false, web: false, mobile: false },
         };
       }
 
       function activityImage(a) {
-        if (!a.assets || !a.assets.large_image) return "";
-        if (a.name === "Spotify") return a.assets.large_image;
-        return discordAsset(a.application_id, a.assets.large_image);
+        if (a.name === "Spotify" && a.assets && a.assets.large_image)
+          return a.assets.large_image;
+        if (a.assets && a.assets.large_image)
+          return discordAsset(a.application_id, a.assets.large_image);
+        return a.large_image_url || a.image_url || "";
       }
 
       function activityMarkup(a) {
@@ -1835,9 +1908,14 @@
         const d = CONFIG.discord;
         const p = profileData();
         const link = `https://discord.com/users/${encodeURIComponent(d.id)}`;
-        const sttTxt = d.live ? (live ? ui(p.status) : ui("loading")) : "";
-        const customStatus = p.custom && p.custom.state ? p.custom.state : "";
         const statusClass = live ? "s-" + p.status : "s-offline";
+        const statusColor =
+          {
+            online: "#38b764",
+            idle: "#ffcd75",
+            dnd: "#b13e53",
+            offline: "#566c86",
+          }[p.status] || "#566c86";
         const activities = [
           ...(p.spotify
             ? [
@@ -1855,11 +1933,13 @@
         const activitySection = activities.length
           ? `<div class="dc-section-title">${esc(ui("activity"))}</div><div class="dc-activities">${activities.map(activityMarkup).join("")}</div>`
           : `<div class="dc-section-title">${esc(ui("activity"))}</div><p class="stt">${esc(ui("noActivity"))}</p>`;
-        const nameplate = p.nameplate
-          ? `<div class="dc-nameplate">${p.nameplateUrl ? `<img src="${esc(p.nameplateUrl)}" alt="" onerror="this.remove()">` : ""}<span>${esc(p.nameplate.label || "Discord nameplate")}</span></div>`
+        const guildTag = p.guildTag
+          ? `<span class="dc-guild-tag">${p.guildTagIcon ? `<img src="${esc(p.guildTagIcon)}" alt="" onerror="this.remove()">` : ""}${esc(p.guildTag)}</span>`
           : "";
-        const guildTag = p.guildTag ? `<span>◆ ${esc(p.guildTag)}</span>` : "";
-        return `<div class="dc"><div class="banner">${p.banner ? `<img src="${esc(p.banner)}" alt="" onerror="this.remove()">` : ""}</div><div class="dcin"><div class="av">${sprite("profile", 56)}<img class="avatar-image" src="${esc(p.avatar)}" alt="" onerror="this.remove()">${p.decoration ? `<img class="avatar-decoration" src="${esc(p.decoration)}" alt="" onerror="this.remove()">` : ""}<i class="dot ${statusClass}"></i></div><h2>${esc(p.name)}</h2><p class="hdl">@${esc(p.handle)}</p>${sttTxt ? `<p class="stt">■ ${esc(sttTxt)}${customStatus ? " — " + esc(customStatus) : ""}</p>` : ""}${nameplate}${p.bio ? `<p class="bio">${esc(t(p.bio))}</p>` : ""}${activitySection}<div class="dc-meta">${guildTag}${live && live.active_on_discord_desktop ? "<span>Desktop</span>" : ""}${live && live.active_on_discord_web ? "<span>Web</span>" : ""}${live && live.active_on_discord_mobile ? "<span>Mobile</span>" : ""}</div><div class="row"><a class="btn pri" href="${link}" target="_blank" rel="noopener">${esc(ui("open"))}</a><button class="btn" data-copy="${esc(p.handle)}">${esc(ui("copy"))}</button></div></div></div>`;
+        const device = (label, active) =>
+          `<span class="dc-device${active ? " active" : ""}" style="--device-status:${statusColor}"><i class="dc-device-pixel"></i>${label}</span>`;
+        const devices = `<span class="dc-devices">${device("Desktop", p.devices.desktop)}${device("Web", p.devices.web)}${device("Mobile", p.devices.mobile)}</span>`;
+        return `<div class="dc"><div class="banner">${p.banner ? `<img src="${esc(p.banner)}" alt="Discord banner" onerror="this.remove()">` : ""}</div><div class="dcin"><div class="av">${sprite("profile", 56)}<img class="avatar-image" src="${esc(p.avatar)}" alt="" onerror="this.remove()">${p.decoration ? `<img class="avatar-decoration" src="${esc(p.decoration)}" alt="" onerror="this.remove()">` : ""}<i class="dot ${statusClass}"></i></div><div class="dc-name-line"><h2>${esc(p.name)}</h2>${guildTag}${devices}</div><p class="hdl">@${esc(p.handle)}</p>${p.bio ? `<p class="bio">${esc(p.bio)}</p>` : ""}${activitySection}<div class="row"><a class="btn pri" href="${link}" target="_blank" rel="noopener">${esc(ui("open"))}</a><button class="btn" data-copy="${esc(p.handle)}">${esc(ui("copy"))}</button></div></div></div>`;
       }
 
       const isPlaceholder = (s) =>
