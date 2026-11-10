@@ -13,6 +13,17 @@
       rel="stylesheet"
     />
     <style>
+      /* Copies locales (optionnel) : mets les .ttf dans fonts/ . Si Google Fonts marche, il est utilisé en priorité. */
+      @font-face {
+        font-family: "PS2P Local";
+        src: url("fonts/PressStart2P-Regular.ttf") format("truetype");
+        font-display: swap;
+      }
+      @font-face {
+        font-family: "VT323 Local";
+        src: url("fonts/VT323-Regular.ttf") format("truetype");
+        font-display: swap;
+      }
       :root {
         --k: #1a1c2c;
         --w: #f4f4f4;
@@ -31,8 +42,9 @@
         --d: #333c57;
         --n: #29366f;
         --panel: #dfe6ee;
-        --px: "Press Start 2P", "Noto Sans", "Segoe UI", sans-serif;
-        --vt: "VT323", "Noto Sans", "Segoe UI", sans-serif;
+        --px:
+          "Press Start 2P", "PS2P Local", "Noto Sans", "Segoe UI", sans-serif;
+        --vt: "VT323", "VT323 Local", "Noto Sans", "Segoe UI", sans-serif;
       }
       * {
         box-sizing: border-box;
@@ -74,7 +86,6 @@
         outline: 3px dashed var(--c);
         outline-offset: 2px;
       }
-
       .crt {
         position: fixed;
         inset: 0;
@@ -172,17 +183,81 @@
         align-items: center;
         gap: 12px;
       }
-      #langsel {
-        background: var(--k);
-        color: var(--w);
-        border: 3px solid var(--w);
+      .lang-picker {
+        position: relative;
+        z-index: 700;
         font-family: var(--px);
-        font-size: 9px;
-        padding: 5px 6px;
-        max-width: 130px;
+        font-size: 8px;
       }
-      #langsel option {
-        font-family: sans-serif;
+      .lang-trigger {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        min-width: 112px;
+        padding: 6px 8px;
+        color: var(--w);
+        background: var(--k);
+        border: 3px solid var(--w);
+        box-shadow: 3px 3px 0 #0008;
+        font-family: var(--px);
+        font-size: 8px;
+      }
+      .flag {
+        font-family:
+          "Noto Color Emoji", "Segoe UI Emoji", "Apple Color Emoji", sans-serif;
+        line-height: 1;
+      }
+      .lang-trigger .flag {
+        font-size: 17px;
+      }
+      .lang-menu {
+        position: absolute;
+        top: calc(100% + 7px);
+        right: 0;
+        display: none;
+        width: 190px;
+        max-height: 280px;
+        overflow: auto;
+        padding: 5px;
+        background: var(--k);
+        border: 3px solid var(--w);
+        box-shadow: 5px 5px 0 #0009;
+      }
+      .lang-picker.open .lang-menu {
+        display: block;
+        animation: menu-in 0.12s steps(3);
+      }
+      @keyframes menu-in {
+        from {
+          opacity: 0;
+          transform: translateY(-5px);
+        }
+        to {
+          opacity: 1;
+          transform: none;
+        }
+      }
+      .lang-option {
+        display: flex;
+        align-items: center;
+        width: 100%;
+        gap: 10px;
+        padding: 8px;
+        color: var(--w);
+        text-align: left;
+        font-family: var(--px);
+        font-size: 8px;
+        line-height: 1.8;
+      }
+      .lang-option:hover,
+      .lang-option.active {
+        color: var(--k);
+        background: var(--y);
+      }
+      .lang-option .flag {
+        width: 24px;
+        font-size: 18px;
+        text-align: center;
       }
       #tr-state {
         color: var(--y);
@@ -220,6 +295,7 @@
         height: 4px;
         background: #fff;
         opacity: 0.9;
+        pointer-events: none;
         box-shadow:
           120px 20px #fff,
           260px 60px #ffcd75,
@@ -240,7 +316,6 @@
           860px 130px #fff,
           1000px 150px #fff,
           1250px 120px #fff;
-        pointer-events: none;
       }
       #icons {
         position: absolute;
@@ -290,6 +365,10 @@
         box-shadow: 8px 8px 0 #0009;
         max-width: calc(100% - 12px);
         max-height: calc(100% - 12px);
+        min-width: 280px;
+        min-height: 220px;
+        resize: both;
+        overflow: hidden;
       }
       .win.open {
         display: flex;
@@ -333,6 +412,8 @@
         box-shadow: none;
       }
       .body {
+        flex: 1;
+        min-height: 0;
         padding: 18px;
         overflow: auto;
         user-select: text;
@@ -342,7 +423,6 @@
         font-size: 14px;
         line-height: 1.5;
       }
-
       .btn {
         display: inline-flex;
         align-items: center;
@@ -419,16 +499,29 @@
         display: flex;
         align-items: center;
         justify-content: center;
+        isolation: isolate;
+        overflow: visible;
       }
-      .av img {
+      .av img.avatar-image {
         position: absolute;
         inset: 0;
         width: 100%;
         height: 100%;
         object-fit: cover;
+        z-index: 1;
+      }
+      .av .avatar-decoration {
+        position: absolute;
+        z-index: 3;
+        inset: -17px;
+        width: calc(100% + 34px);
+        height: calc(100% + 34px);
+        object-fit: contain;
+        pointer-events: none;
       }
       .dot {
         position: absolute;
+        z-index: 4;
         right: -12px;
         bottom: -12px;
         width: 24px;
@@ -462,18 +555,6 @@
         margin-top: 8px;
         font-size: 22px;
       }
-      .act {
-        margin-top: 8px;
-        padding: 8px 10px;
-        background: var(--w);
-        border: 3px solid var(--k);
-        font-size: 22px;
-      }
-      .act small {
-        display: block;
-        color: var(--S);
-        font-size: 18px;
-      }
       .bio {
         margin-top: 12px;
         font-size: 24px;
@@ -481,6 +562,73 @@
         padding: 10px;
         background: var(--w);
         border: 3px solid var(--k);
+      }
+      .dc-nameplate {
+        display: inline-flex;
+        align-items: center;
+        gap: 7px;
+        max-width: 100%;
+        margin-top: 10px;
+        padding: 5px 8px;
+        color: var(--w);
+        background: var(--k);
+        border: 3px solid var(--k);
+        font-size: 18px;
+      }
+      .dc-nameplate img {
+        display: block;
+        width: 100%;
+        max-width: 280px;
+        max-height: 74px;
+        object-fit: contain;
+      }
+      .dc-section-title {
+        margin-top: 16px;
+        margin-bottom: 7px;
+        font-family: var(--px);
+        font-size: 9px;
+      }
+      .dc-activities {
+        display: grid;
+        gap: 8px;
+        margin-top: 8px;
+      }
+      .dc-activity {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 8px;
+        background: var(--w);
+        border: 3px solid var(--k);
+        font-size: 21px;
+      }
+      .dc-activity img {
+        width: 42px;
+        height: 42px;
+        flex: none;
+        object-fit: cover;
+        border: 2px solid var(--k);
+      }
+      .dc-activity small {
+        display: block;
+        color: var(--S);
+        font-size: 18px;
+      }
+      .dc-activity-copy {
+        min-width: 0;
+        overflow-wrap: anywhere;
+      }
+      .dc-meta {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+        margin-top: 8px;
+      }
+      .dc-meta span {
+        padding: 4px 7px;
+        background: var(--panel);
+        border: 2px solid var(--k);
+        font-size: 17px;
       }
 
       /* Social */
@@ -692,6 +840,84 @@
         background: var(--y);
       }
 
+      /* Language overlay */
+      #lang-loading {
+        position: fixed;
+        inset: 0;
+        z-index: 9500;
+        display: none;
+        align-items: center;
+        justify-content: center;
+        padding: 20px;
+        background: #1a1c2cf2;
+        color: var(--w);
+        text-align: center;
+      }
+      #lang-loading.open {
+        display: flex;
+      }
+      .loading-card {
+        width: min(420px, 100%);
+        padding: 26px;
+        background: var(--k);
+        border: 4px solid var(--w);
+        box-shadow: 8px 8px 0 #0009;
+      }
+      .loading-card h2 {
+        color: var(--y);
+        font-family: var(--px);
+        font-size: 12px;
+        line-height: 1.7;
+      }
+      .loading-card p {
+        margin-top: 14px;
+        color: var(--s);
+        font-size: 25px;
+      }
+      .loading-track {
+        display: flex;
+        gap: 5px;
+        margin-top: 22px;
+        padding: 6px;
+        border: 3px solid var(--w);
+      }
+      .loading-track i {
+        flex: 1;
+        height: 18px;
+        background: var(--d);
+        animation: loading-pixel 0.9s steps(2) infinite;
+      }
+      .loading-track i:nth-child(2) {
+        animation-delay: 0.08s;
+      }
+      .loading-track i:nth-child(3) {
+        animation-delay: 0.16s;
+      }
+      .loading-track i:nth-child(4) {
+        animation-delay: 0.24s;
+      }
+      .loading-track i:nth-child(5) {
+        animation-delay: 0.32s;
+      }
+      .loading-track i:nth-child(6) {
+        animation-delay: 0.4s;
+      }
+      .loading-track i:nth-child(7) {
+        animation-delay: 0.48s;
+      }
+      .loading-track i:nth-child(8) {
+        animation-delay: 0.56s;
+      }
+      @keyframes loading-pixel {
+        0%,
+        100% {
+          background: var(--d);
+        }
+        50% {
+          background: var(--g);
+        }
+      }
+
       /* Viewer */
       #viewer {
         position: fixed;
@@ -790,6 +1016,22 @@
         #act {
           display: none;
         }
+        .lang-trigger {
+          min-width: 82px;
+          padding: 5px;
+          font-size: 7px;
+        }
+        .lang-menu {
+          width: 165px;
+        }
+        .win {
+          resize: none;
+          min-width: 0;
+          min-height: 0;
+          left: 6px !important;
+          top: 6px !important;
+          width: calc(100% - 12px) !important;
+        }
         #icons {
           display: grid;
           grid-template-columns: repeat(3, 1fr);
@@ -799,11 +1041,6 @@
         }
         .dicon {
           width: auto;
-        }
-        .win {
-          left: 6px !important;
-          top: 6px !important;
-          width: calc(100% - 12px) !important;
         }
         .title {
           cursor: default;
@@ -822,7 +1059,8 @@
       }
       @media (prefers-reduced-motion: reduce) {
         #boot .blink,
-        #tr-state.on {
+        #tr-state.on,
+        .loading-track i {
           animation: none;
         }
       }
@@ -841,7 +1079,19 @@
       <span id="act"></span>
       <span class="right">
         <span id="tr-state">…</span>
-        <select id="langsel" aria-label="Language"></select>
+        <div class="lang-picker" id="lang-picker">
+          <button
+            class="lang-trigger"
+            id="lang-trigger"
+            type="button"
+            aria-haspopup="true"
+            aria-expanded="false"
+          >
+            <span class="flag" id="lang-flag">🇬🇧</span
+            ><span id="lang-label">English</span><span>▼</span>
+          </button>
+          <div class="lang-menu" id="lang-menu" role="menu"></div>
+        </div>
         <span id="clock">--:--</span>
       </span>
     </div>
@@ -852,31 +1102,33 @@
     </div>
     <div id="dock"></div>
     <div id="viewer"></div>
+    <div id="lang-loading" aria-live="polite">
+      <div class="loading-card">
+        <h2 id="loading-title">CHANGING LANGUAGE</h2>
+        <p id="loading-copy">Preparing translation...</p>
+        <div class="loading-track">
+          <i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i>
+        </div>
+      </div>
+    </div>
     <div class="crt"></div>
 
     <script>
       /* =========================================================
-   CONFIGURATION
-   Write every text in ENGLISH only. It is translated
-   automatically (Google Translate) into the visitor's language.
-   To force a manual translation, add it in OVERRIDES below.
+   CONFIGURATION — écris tout en ANGLAIS, c'est traduit automatiquement.
    ========================================================= */
       const CONFIG = {
         name: "lyriqalc",
         role: "Roblox Developer",
         avatar: "img/avatar.png",
-
         discord: {
           id: "1089541365278457926",
           username: "lyriqalc",
           displayName: "lyriqalc",
           avatar: "img/avatar.png",
-          live: true, // Lanyard (live status) + Discord Lookup (fallback)
+          live: true,
           bio: "Hey! I'm lyriqalc! A French Roblox Developer. Currently working on a project called 'Banff, Alberta'.",
         },
-
-        /* icon: discord | x | instagram | youtube | github | mail | link
-           Entries still containing "your_" or "you@" are hidden automatically. */
         socials: [
           {
             icon: "discord",
@@ -915,7 +1167,6 @@
             url: "mailto:you@email.com",
           },
         ],
-
         tags: ["Building", "UI Designing"],
         about: [
           "Hey! I'm lyriqalc! A French Roblox Developer. Currently working on a project called 'Banff, Alberta'.",
@@ -926,7 +1177,6 @@
           { value: "2023", label: "Since" },
           { value: "16", label: "Age" },
         ],
-
         skills: [
           {
             name: "Building",
@@ -939,7 +1189,6 @@
             level: 70,
           },
         ],
-
         works: [
           {
             title: "House in Banff",
@@ -956,15 +1205,11 @@
         ],
       };
 
-      /* Optional manual fixes: { langCode: { "English text": "Your text" } } */
+      /* Corrections manuelles : { langCode: { "English text": "Ton texte" } } */
       const OVERRIDES = {
-        fr: {
-          Building: "Building",
-          "UI Designing": "Design UI",
-        },
+        fr: { Building: "Building", "UI Designing": "Design UI" },
       };
 
-      /* Languages offered (code = Google Translate code) */
       const LANGS = [
         ["en", "English"],
         ["fr", "Français"],
@@ -982,6 +1227,22 @@
         ["zh-CN", "中文"],
       ];
       const RTL = ["ar"];
+      const FLAGS = {
+        en: "🇬🇧",
+        fr: "🇫🇷",
+        es: "🇪🇸",
+        de: "🇩🇪",
+        it: "🇮🇹",
+        pt: "🇵🇹",
+        nl: "🇳🇱",
+        pl: "🇵🇱",
+        tr: "🇹🇷",
+        ru: "🇷🇺",
+        ar: "🇸🇦",
+        ja: "🇯🇵",
+        ko: "🇰🇷",
+        "zh-CN": "🇨🇳",
+      };
 
       const UI = {
         profile: "Profile",
@@ -1003,8 +1264,10 @@
         boot: "Booting…",
         skip: "click to skip",
         ready: "Ready!",
-        playing: "Playing",
-        listening: "Listening to Spotify",
+        activity: "ACTIVITY",
+        noActivity: "No active activity",
+        changing: "CHANGING LANGUAGE",
+        preparing: "Preparing translation...",
       };
 
       /* =========================================================
@@ -1028,6 +1291,7 @@
         d: "#333c57",
         n: "#29366f",
       };
+      const pad = (rows) => rows.map((r) => r.slice(0, 12).padEnd(12, "."));
       const SPR = {
         profile: [
           "....kkkk....",
@@ -1043,7 +1307,7 @@
           ".kkkkkkkkkk.",
           "............",
         ],
-        social: [
+        social: pad([
           "............",
           ".kkkkkkkkkk.",
           ".kccccccccck",
@@ -1056,7 +1320,7 @@
           "............",
           "............",
           "............",
-        ].map((r) => r.slice(0, 12).padEnd(12, ".")),
+        ]),
         about: [
           "..kkkkkkkk..",
           "..kwwwwwwk..",
@@ -1113,7 +1377,7 @@
           "...kkkkkk...",
           "............",
         ],
-        discord: [
+        discord: pad([
           "............",
           "..kkkkkkkk..",
           ".kbbbbbbbbk.",
@@ -1126,7 +1390,7 @@
           ".kbbbbbbbbk.",
           "..kk....kk..",
           "............",
-        ].map((r) => r.slice(0, 12).padEnd(12, ".")),
+        ]),
         x: [
           "............",
           ".kk......kk.",
@@ -1235,12 +1499,36 @@
           } catch (e) {}
         },
       };
+      async function fetchJSON(url, ms = 6000) {
+        const ctrl = new AbortController();
+        const timer = setTimeout(() => ctrl.abort(), ms);
+        try {
+          const r = await fetch(url, { signal: ctrl.signal });
+          if (!r.ok) throw new Error("HTTP " + r.status);
+          return await r.json();
+        } finally {
+          clearTimeout(timer);
+        }
+      }
 
-      /* ---------- Translation (Google Translate) ---------- */
+      /* ---------- Pixel fonts : on attend qu'elles soient chargées puis on re-render ---------- */
+      function loadFonts() {
+        if (!document.fonts || !document.fonts.load) return;
+        const tries = [
+          ['10px "Press Start 2P"', '10px "PS2P Local"'],
+          ['22px "VT323"', '22px "VT323 Local"'],
+        ];
+        tries.forEach(([google, local]) => {
+          document.fonts.load(google, "Aa").catch(() => {});
+          document.fonts.load(local, "Aa").catch(() => {});
+        });
+      }
+
+      /* ---------- Translation (Google Translate + fallback MyMemory) ---------- */
       const CODES = LANGS.map((l) => l[0]);
-      let lang = "en";
-      let dict = {};
-      let trToken = 0;
+      let lang = "en",
+        dict = {},
+        trToken = 0;
 
       function detectLang() {
         const saved = store.get("lang");
@@ -1253,9 +1541,10 @@
         );
       }
 
+      /* Liste des textes anglais à traduire : uniquement depuis CONFIG et UI, jamais depuis le DOM */
       function sourceStrings() {
         const set = new Set(Object.values(UI));
-        const add = (s) => s && set.add(String(s));
+        const add = (s) => s && set.add(String(s).trim());
         add(CONFIG.role);
         add(CONFIG.discord.bio);
         CONFIG.socials.forEach((s) => add(s.label));
@@ -1273,10 +1562,24 @@
           encodeURIComponent(to) +
           "&q=" +
           encodeURIComponent(text);
-        const r = await fetch(url);
-        if (!r.ok) throw new Error("HTTP " + r.status);
-        const j = await r.json();
-        return j[0].map((x) => x[0]).join("");
+        for (let a = 0; a < 3; a++) {
+          try {
+            const j = await fetchJSON(url, 8000);
+            return j[0].map((x) => x[0]).join("");
+          } catch (e) {
+            await new Promise((r) => setTimeout(r, 400 * (a + 1)));
+          }
+        }
+        const j = await fetchJSON(
+          "https://api.mymemory.translated.net/get?q=" +
+            encodeURIComponent(text) +
+            "&langpair=en|" +
+            encodeURIComponent(to),
+          8000,
+        );
+        if (!j.responseData || !j.responseData.translatedText)
+          throw new Error("translate fail");
+        return j.responseData.translatedText;
       }
 
       const t = (s) => {
@@ -1286,92 +1589,228 @@
       };
       const ui = (k) => t(UI[k]);
 
-      async function setLang(l) {
+      const languageOverlay = $("#lang-loading");
+      let languageOverlayTimer;
+      function showLanguageLoading() {
+        clearTimeout(languageOverlayTimer);
+        languageOverlay.classList.add("open");
+      }
+      function hideLanguageLoading() {
+        languageOverlay.classList.remove("open");
+      }
+
+      async function setLang(l, animate = true) {
+        const token = ++trToken;
+        if (animate && l !== lang) showLanguageLoading();
         lang = l;
         store.set("lang", l);
-        const token = ++trToken;
         document.documentElement.lang = l;
-        document.documentElement.dir = "ltr";
+        document.documentElement.dir = RTL.includes(l) ? "rtl" : "ltr";
         dict = {};
         if (l !== "en") {
           try {
             dict = JSON.parse(store.get("tr_" + l) || "{}");
           } catch (e) {}
         }
+        const mine = dict;
         render();
-        if (l === "en") return;
-
-        const todo = sourceStrings().filter(
-          (s) => !dict[s] && !(OVERRIDES[l] && OVERRIDES[l][s]),
-        );
-        if (!todo.length) return;
+        const todo =
+          l === "en"
+            ? []
+            : sourceStrings().filter(
+                (s) => !mine[s] && !(OVERRIDES[l] && OVERRIDES[l][s]),
+              );
         const flag = $("#tr-state");
-        flag.classList.add("on");
-        let i = 0;
-        const worker = async () => {
-          while (i < todo.length && token === trToken) {
-            const s = todo[i++];
-            try {
-              dict[s] = await googleTranslate(s, l);
-            } catch (e) {}
+        try {
+          if (todo.length) {
+            flag.classList.add("on");
+            let i = 0;
+            const worker = async () => {
+              while (i < todo.length && token === trToken) {
+                const s = todo[i++];
+                try {
+                  mine[s] = await googleTranslate(s, l);
+                } catch (e) {}
+              }
+            };
+            await Promise.all([worker(), worker(), worker()]);
+            if (token !== trToken) return;
+            store.set("tr_" + l, JSON.stringify(mine));
+            render();
           }
-        };
-        await Promise.all([worker(), worker(), worker(), worker()]);
-        if (token !== trToken) return;
-        flag.classList.remove("on");
-        store.set("tr_" + l, JSON.stringify(dict));
-        render();
+        } finally {
+          if (token === trToken) {
+            flag.classList.remove("on");
+            languageOverlayTimer = setTimeout(hideLanguageLoading, 300);
+          }
+        }
       }
 
-      /* ---------- Discord (Lanyard + Discord Lookup fallback) ---------- */
-      let live = null;
-      let lookup = null;
+      /* ---------- Discord (Lanyard REST + WebSocket, Discord Lookup en fallback) ---------- */
+      let live = null,
+        lookup = null,
+        lastLive = "";
+      try {
+        lastLive = store.get("lanyard") || "";
+        live = lastLive ? JSON.parse(lastLive) : null;
+        lookup = JSON.parse(store.get("dlookup") || "null");
+      } catch (e) {}
+
+      let discordSocket = null,
+        discordHeartbeat = null,
+        discordReconnect = null;
+
+      function setLive(data) {
+        if (!data) return;
+        const s = JSON.stringify(data);
+        if (s === lastLive) return;
+        lastLive = s;
+        live = data;
+        store.set("lanyard", s);
+        fillApp("profile");
+      }
 
       async function loadDiscord() {
         const d = CONFIG.discord;
         if (!d.live || !/^\d{15,25}$/.test(d.id)) return;
+        const rest = fetchJSON("https://api.lanyard.rest/v1/users/" + d.id)
+          .then((j) => j.success && setLive(j.data))
+          .catch(() => {});
+        const look = lookup
+          ? null
+          : fetchJSON("https://discordlookup.mesalytic.moe/v1/user/" + d.id)
+              .then((j) => {
+                lookup = j;
+                store.set("dlookup", JSON.stringify(j));
+                fillApp("profile");
+              })
+              .catch(() => {});
+        await Promise.all([rest, look]);
+      }
+
+      function connectLanyard() {
+        if (!CONFIG.discord.live || !/^\d{15,25}$/.test(CONFIG.discord.id))
+          return;
         try {
-          const r = await fetch("https://api.lanyard.rest/v1/users/" + d.id);
-          const j = await r.json();
-          if (j && j.success) live = j.data;
-        } catch (e) {}
-        if (!lookup) {
-          try {
-            const r = await fetch(
-              "https://discordlookup.mesalytic.moe/v1/user/" + d.id,
-            );
-            if (r.ok) lookup = await r.json();
-          } catch (e) {}
+          discordSocket = new WebSocket("wss://api.lanyard.rest/socket");
+          discordSocket.addEventListener("message", (event) => {
+            let packet;
+            try {
+              packet = JSON.parse(event.data);
+            } catch (e) {
+              return;
+            }
+            if (packet.op === 1) {
+              clearInterval(discordHeartbeat);
+              discordHeartbeat = setInterval(() => {
+                if (
+                  discordSocket &&
+                  discordSocket.readyState === WebSocket.OPEN
+                )
+                  discordSocket.send(JSON.stringify({ op: 3 }));
+              }, packet.d.heartbeat_interval);
+              discordSocket.send(
+                JSON.stringify({
+                  op: 2,
+                  d: { subscribe_to_id: CONFIG.discord.id },
+                }),
+              );
+            }
+            if (
+              packet.op === 0 &&
+              (packet.t === "INIT_STATE" || packet.t === "PRESENCE_UPDATE")
+            )
+              setLive(packet.d);
+          });
+          discordSocket.addEventListener("close", () => {
+            clearInterval(discordHeartbeat);
+            clearTimeout(discordReconnect);
+            discordReconnect = setTimeout(connectLanyard, 5000);
+          });
+          discordSocket.addEventListener("error", () => {
+            if (discordSocket) discordSocket.close();
+          });
+        } catch (e) {
+          clearTimeout(discordReconnect);
+          discordReconnect = setTimeout(connectLanyard, 5000);
         }
-        if (live || lookup) fillApp("profile");
+      }
+
+      function discordAsset(applicationId, asset) {
+        if (!asset) return "";
+        if (asset.startsWith("mp:external/"))
+          return "https://media.discordapp.net/" + asset.slice(3);
+        if (asset.startsWith("http://") || asset.startsWith("https://"))
+          return asset;
+        return applicationId
+          ? "https://cdn.discordapp.com/app-assets/" +
+              applicationId +
+              "/" +
+              asset +
+              ".png?size=128"
+          : "";
       }
 
       function profileData() {
         const d = CONFIG.discord;
         const u = live && live.discord_user;
+        const lu = lookup && (lookup.user || lookup);
         const name =
-          (u && (u.global_name || u.username)) ||
-          (lookup && (lookup.global_name || lookup.username)) ||
+          (u && (u.global_name || u.display_name || u.username)) ||
+          (lu && (lu.global_name || lu.display_name || lu.username)) ||
           d.displayName;
-        const handle =
-          (u && u.username) || (lookup && lookup.username) || d.username;
+        const handle = (u && u.username) || (lu && lu.username) || d.username;
         let avatar = d.avatar;
         if (u && u.avatar)
-          avatar = `https://cdn.discordapp.com/avatars/${d.id}/${u.avatar}.png?size=256`;
-        else if (lookup && lookup.avatar && lookup.avatar.link)
-          avatar = lookup.avatar.link;
-        const banner = lookup && lookup.banner && lookup.banner.link;
-        const acts = (live && live.activities) || [];
+          avatar = `https://cdn.discordapp.com/avatars/${d.id}/${u.avatar}.${u.avatar.startsWith("a_") ? "gif" : "png"}?size=512`;
+        else if (lu && lu.avatar && lu.avatar.link) avatar = lu.avatar.link;
+        const bannerValue =
+          (lu && lu.banner && (lu.banner.link || lu.banner)) ||
+          (u && u.banner
+            ? `https://cdn.discordapp.com/banners/${d.id}/${u.banner}.png?size=1024`
+            : "");
+        const decoration =
+          u && u.avatar_decoration_data && u.avatar_decoration_data.asset
+            ? `https://cdn.discordapp.com/avatar-decoration-presets/${u.avatar_decoration_data.asset}.png?size=256`
+            : "";
+        const activities = (live && live.activities) || [];
         return {
           name,
           handle,
           avatar,
-          banner,
+          banner: typeof bannerValue === "string" ? bannerValue : "",
+          decoration,
+          nameplate: u && u.collectibles && u.collectibles.nameplate,
+          nameplateUrl:
+            u &&
+            u.collectibles &&
+            u.collectibles.nameplate &&
+            u.collectibles.nameplate.asset
+              ? `https://cdn.discordapp.com/assets/collectibles/${u.collectibles.nameplate.asset}static.png`
+              : "",
+          guildTag:
+            u && u.primary_guild && u.primary_guild.tag
+              ? u.primary_guild.tag
+              : "",
           status: live ? live.discord_status : "offline",
-          custom: acts.find((a) => a.type === 4),
-          game: acts.find((a) => a.type === 0),
+          custom: activities.find((a) => a.type === 4),
+          activities: activities.filter((a) => a.type !== 4),
           spotify: live && live.listening_to_spotify ? live.spotify : null,
+          bio: (lu && (lu.bio || lu.about_me)) || d.bio,
         };
+      }
+
+      function activityImage(a) {
+        if (!a.assets || !a.assets.large_image) return "";
+        if (a.name === "Spotify") return a.assets.large_image;
+        return discordAsset(a.application_id, a.assets.large_image);
+      }
+
+      function activityMarkup(a) {
+        const title = a.name || "Activity";
+        const details = [a.details, a.state].filter(Boolean).join(" · ");
+        const image = activityImage(a);
+        return `<div class="dc-activity">${image ? `<img src="${esc(image)}" alt="" onerror="this.remove()">` : ""}<div class="dc-activity-copy"><b>${esc(title)}</b>${details ? `<small>${esc(details)}</small>` : ""}</div></div>`;
       }
 
       function profileBody() {
@@ -1379,22 +1818,30 @@
         const p = profileData();
         const link = `https://discord.com/users/${encodeURIComponent(d.id)}`;
         const sttTxt = d.live ? (live ? ui(p.status) : ui("loading")) : "";
-        return `<div class="dc">
-    <div class="banner">${p.banner ? `<img src="${esc(p.banner)}" alt="" onerror="this.remove()">` : ""}</div>
-    <div class="dcin">
-    <div class="av">${sprite("profile", 56)}
-      <img src="${esc(p.avatar)}" alt="" onerror="this.remove()">
-      ${live ? `<i class="dot s-${esc(p.status)}"></i>` : ""}</div>
-    <h2>${esc(p.name)}</h2>
-    <p class="hdl">@${esc(p.handle)}</p>
-    ${sttTxt ? `<p class="stt">■ ${esc(sttTxt)}${p.custom && p.custom.state ? " — " + esc(p.custom.state) : ""}</p>` : ""}
-    ${p.spotify ? `<p class="act"><small>${esc(ui("listening"))}</small>${esc(p.spotify.song)} — ${esc(p.spotify.artist)}</p>` : ""}
-    ${p.game ? `<p class="act"><small>${esc(ui("playing"))}</small>${esc(p.game.name)}</p>` : ""}
-    <p class="bio">${esc(t(d.bio))}</p>
-    <div class="row">
-      <a class="btn pri" href="${link}" target="_blank" rel="noopener">${esc(ui("open"))}</a>
-      <button class="btn" data-copy="${esc(p.handle)}">${esc(ui("copy"))}</button>
-    </div></div></div>`;
+        const customStatus = p.custom && p.custom.state ? p.custom.state : "";
+        const statusClass = live ? "s-" + p.status : "s-offline";
+        const activities = [
+          ...(p.spotify
+            ? [
+                {
+                  name: "Spotify",
+                  details: p.spotify.song,
+                  state: p.spotify.artist,
+                  assets: { large_image: p.spotify.album_art_url },
+                  application_id: "",
+                },
+              ]
+            : []),
+          ...p.activities,
+        ];
+        const activitySection = activities.length
+          ? `<div class="dc-section-title">${esc(ui("activity"))}</div><div class="dc-activities">${activities.map(activityMarkup).join("")}</div>`
+          : `<div class="dc-section-title">${esc(ui("activity"))}</div><p class="stt">${esc(ui("noActivity"))}</p>`;
+        const nameplate = p.nameplate
+          ? `<div class="dc-nameplate">${p.nameplateUrl ? `<img src="${esc(p.nameplateUrl)}" alt="" onerror="this.remove()">` : ""}<span>${esc(p.nameplate.label || "Discord nameplate")}</span></div>`
+          : "";
+        const guildTag = p.guildTag ? `<span>◆ ${esc(p.guildTag)}</span>` : "";
+        return `<div class="dc"><div class="banner">${p.banner ? `<img src="${esc(p.banner)}" alt="" onerror="this.remove()">` : ""}</div><div class="dcin"><div class="av">${sprite("profile", 56)}<img class="avatar-image" src="${esc(p.avatar)}" alt="" onerror="this.remove()">${p.decoration ? `<img class="avatar-decoration" src="${esc(p.decoration)}" alt="" onerror="this.remove()">` : ""}<i class="dot ${statusClass}"></i></div><h2>${esc(p.name)}</h2><p class="hdl">@${esc(p.handle)}</p>${sttTxt ? `<p class="stt">■ ${esc(sttTxt)}${customStatus ? " — " + esc(customStatus) : ""}</p>` : ""}${nameplate}${p.bio ? `<p class="bio">${esc(t(p.bio))}</p>` : ""}${activitySection}<div class="dc-meta">${guildTag}${live && live.active_on_discord_desktop ? "<span>Desktop</span>" : ""}${live && live.active_on_discord_web ? "<span>Web</span>" : ""}${live && live.active_on_discord_mobile ? "<span>Mobile</span>" : ""}</div><div class="row"><a class="btn pri" href="${link}" target="_blank" rel="noopener">${esc(ui("open"))}</a><button class="btn" data-copy="${esc(p.handle)}">${esc(ui("copy"))}</button></div></div></div>`;
       }
 
       const isPlaceholder = (s) =>
@@ -1404,27 +1851,23 @@
           .filter((s) => !isPlaceholder(s))
           .map(
             (s) => `
-    <a href="${esc(s.url)}" target="_blank" rel="noopener">
-      <span class="ic">${sprite(s.icon, 36)}</span>
-      <span><b>${esc(s.label)}</b><small>${esc(s.handle)}</small></span><span class="ar">▶</span></a>`,
+<a href="${esc(s.url)}" target="_blank" rel="noopener"><span class="ic">${sprite(s.icon, 36)}</span><span><b>${esc(t(s.label))}</b><small>${esc(s.handle)}</small></span><span class="ar">▶</span></a>`,
           )
           .join("")}</div>`;
       }
       function aboutBody() {
         return `<div class="about">
-    <div class="pfp">${sprite("profile", 64)}<img src="${esc(CONFIG.avatar)}" alt="" onerror="this.remove()"></div>
-    <div class="txt"><h2 class="px">${esc(CONFIG.name)}</h2><p style="color:var(--S);margin-top:6px">${esc(t(CONFIG.role))}</p>
-      <div class="tags">${CONFIG.tags.map((x) => `<span class="tag">${esc(t(x))}</span>`).join("")}</div></div></div>
-    <div class="txt">${CONFIG.about.map((p) => `<p>${esc(t(p))}</p>`).join("")}</div>
-    <div class="stats">${CONFIG.stats.map((s) => `<div class="stat"><b>${esc(s.value)}</b><small>${esc(t(s.label))}</small></div>`).join("")}</div>`;
+<div class="pfp">${sprite("profile", 64)}<img src="${esc(CONFIG.avatar)}" alt="" onerror="this.remove()"></div>
+<div class="txt"><h2 class="px">${esc(CONFIG.name)}</h2><p style="color:var(--S);margin-top:6px">${esc(t(CONFIG.role))}</p>
+<div class="tags">${CONFIG.tags.map((x) => `<span class="tag">${esc(t(x))}</span>`).join("")}</div></div></div>
+<div class="txt">${CONFIG.about.map((p) => `<p>${esc(t(p))}</p>`).join("")}</div>
+<div class="stats">${CONFIG.stats.map((s) => `<div class="stat"><b>${esc(s.value)}</b><small>${esc(t(s.label))}</small></div>`).join("")}</div>`;
       }
       function worksBody() {
         return `<div class="gal">${CONFIG.works
           .map(
             (w, i) => `
-    <button class="gi" data-w="${i}"><div class="th">${sprite("works", 48)}
-      <img src="${esc(w.img)}" alt="${esc(t(w.title))}" loading="lazy" onerror="this.remove()"></div>
-      <span>${esc(t(w.title))}</span><small>${esc(t(w.desc))}</small></button>`,
+<button class="gi" data-w="${i}"><div class="th">${sprite("works", 48)}<img src="${esc(w.img)}" alt="${esc(t(w.title))}" loading="lazy" onerror="this.remove()"></div><span>${esc(t(w.title))}</span><small>${esc(t(w.desc))}</small></button>`,
           )
           .join("")}</div>`;
       }
@@ -1433,8 +1876,8 @@
           .map((s) => {
             const n = Math.round(s.level / 10);
             return `<div class="sk"><div class="h"><b>${esc(t(s.name))}</b><small>${s.level}%</small></div>
-      <div class="blocks">${Array.from({ length: 10 }, (_, i) => `<i class="${i < n ? "on" + (i >= 7 ? " h2" : "") : ""}"></i>`).join("")}</div>
-      <small style="color:var(--S);font-size:20px">${esc(t(s.note))}</small></div>`;
+<div class="blocks">${Array.from({ length: 10 }, (_, i) => `<i class="${i < n ? "on" + (i >= 7 ? " h2" : "") : ""}"></i>`).join("")}</div>
+<small style="color:var(--S);font-size:20px">${esc(t(s.note))}</small></div>`;
           })
           .join("");
       }
@@ -1467,8 +1910,7 @@
 
       const desk = $("#desk");
       let z = 10,
-        topId = null,
-        placed = 0;
+        topId = null;
 
       APPS.forEach((a) => {
         const el = document.createElement("section");
@@ -1478,11 +1920,9 @@
         el.innerHTML = `<div class="title"><span class="tt"></span><span class="ctl"><button data-min aria-label="Minimize">_</button><button data-x aria-label="Close">X</button></span></div><div class="body"></div>`;
         desk.appendChild(el);
         a.el = el;
-
         el.addEventListener("pointerdown", () => focusApp(a.id));
         $("[data-x]", el).onclick = () => closeApp(a.id);
         $("[data-min]", el).onclick = () => closeApp(a.id);
-
         const head = $(".title", el);
         head.addEventListener("pointerdown", (e) => {
           if (e.target.closest("button") || innerWidth <= 700) return;
@@ -1491,10 +1931,12 @@
           head.setPointerCapture(e.pointerId);
           const move = (ev) => {
             el.style.left =
-              Math.max(0, Math.min(ev.clientX - ox, desk.clientWidth - 90)) +
-              "px";
+              Math.max(
+                0,
+                Math.min(ev.clientX - ox, desk.clientWidth - el.offsetWidth),
+              ) + "px";
             el.style.top =
-              Math.max(0, Math.min(ev.clientY - oy, desk.clientHeight - 50)) +
+              Math.max(0, Math.min(ev.clientY - oy, desk.clientHeight - 48)) +
               "px";
           };
           const up = () => {
@@ -1511,7 +1953,9 @@
         $(".tt", a.el).textContent = ui(a.id).toUpperCase();
         const body = $(".body", a.el);
         body.dir = RTL.includes(lang) ? "rtl" : "ltr";
+        const top = body.scrollTop;
         body.innerHTML = a.body();
+        body.scrollTop = top;
       }
       const fillAll = () => APPS.forEach((a) => fillApp(a.id));
 
@@ -1524,11 +1968,16 @@
           (a) =>
             `<button class="dk" data-dock="${a.id}" title="${esc(ui(a.id))}" aria-label="${esc(ui(a.id))}">${sprite(a.icon, 36)}</button>`,
         ).join("");
-        $("#langsel").innerHTML = LANGS.map(
+        const sel = LANGS.find(([c]) => c === lang) || LANGS[0];
+        $("#lang-flag").textContent = FLAGS[lang] || "🌐";
+        $("#lang-label").textContent = sel[1];
+        $("#lang-menu").innerHTML = LANGS.map(
           ([c, n]) =>
-            `<option value="${c}"${c === lang ? " selected" : ""}>${n}</option>`,
+            `<button class="lang-option${c === lang ? " active" : ""}" type="button" role="menuitem" data-lang="${c}"><span class="flag">${FLAGS[c] || "🌐"}</span><span>${esc(n)}</span></button>`,
         ).join("");
         $("#bootskip").textContent = ui("skip");
+        $("#loading-title").textContent = ui("changing");
+        $("#loading-copy").textContent = ui("preparing");
         refresh();
       }
       const render = () => {
@@ -1548,31 +1997,23 @@
         $("#act").textContent = cur ? ui(cur.id).toUpperCase() : "";
       }
       function focusApp(id) {
-        const a = APPS.find((x) => x.id === id);
-        a.el.style.zIndex = ++z;
+        APPS.find((x) => x.id === id).el.style.zIndex = ++z;
         topId = id;
         refresh();
       }
       function openApp(id) {
-        const a = APPS.find((x) => x.id === id),
-          el = a.el;
+        const a = APPS.find((x) => x.id === id);
+        const el = a.el;
         if (innerWidth <= 700)
           APPS.forEach((o) => o.el.classList.remove("open"));
         if (!el.classList.contains("open") && !el.dataset.placed) {
-          const W = Math.min(a.w, desk.clientWidth - 12);
+          const W = Math.min(a.w, desk.clientWidth - 24);
+          const H = Math.min(620, Math.max(260, desk.clientHeight - 40));
           el.style.width = W + "px";
-          const x = Math.max(
-            6,
-            Math.min(130 + placed * 34, desk.clientWidth - W - 6),
-          );
-          const y = Math.max(
-            6,
-            Math.min(24 + placed * 30, desk.clientHeight - 200),
-          );
-          el.style.left = x + "px";
-          el.style.top = y + "px";
+          el.style.height = H + "px";
+          el.style.left = Math.max(6, (desk.clientWidth - W) / 2) + "px";
+          el.style.top = Math.max(6, (desk.clientHeight - H) / 2) + "px";
           el.dataset.placed = "1";
-          placed = (placed + 1) % 6;
         }
         el.classList.add("open");
         focusApp(id);
@@ -1589,12 +2030,10 @@
         const n = CONFIG.works.length;
         cur = (i + n) % n;
         const w = CONFIG.works[cur];
-        viewer.innerHTML = `<div class="vwin"><div class="title" style="--tc:#5d275d"><span>${esc(t(w.title)).toUpperCase()}</span>
-      <span class="ctl"><button data-vx aria-label="Close">X</button></span></div>
-    <div class="body"><div class="vimg"><div class="ph">${sprite("works", 96)}</div></div>
-      <p style="font-size:26px">${esc(t(w.desc))}</p>
-      <div class="row" style="margin-top:4px"><button class="btn" data-vp>${ui("prev")}</button><button class="btn" data-vn>${ui("next")}</button>
-      ${w.link ? `<a class="btn pri" href="${esc(w.link)}" target="_blank" rel="noopener">${esc(ui("visit"))}</a>` : ""}</div></div></div>`;
+        viewer.innerHTML = `<div class="vwin"><div class="title" style="--tc:#5d275d"><span>${esc(t(w.title)).toUpperCase()}</span><span class="ctl"><button data-vx aria-label="Close">X</button></span></div>
+<div class="body"><div class="vimg"><div class="ph">${sprite("works", 96)}</div></div>
+<p style="font-size:26px">${esc(t(w.desc))}</p>
+<div class="row" style="margin-top:4px"><button class="btn" data-vp>${esc(ui("prev"))}</button><button class="btn" data-vn>${esc(ui("next"))}</button>${w.link ? `<a class="btn pri" href="${esc(w.link)}" target="_blank" rel="noopener">${esc(ui("visit"))}</a>` : ""}</div></div></div>`;
         const im = new Image();
         im.alt = t(w.title);
         im.onload = () => {
@@ -1610,12 +2049,24 @@
       const closeViewer = () => viewer.classList.remove("open");
 
       /* ---------- Events ---------- */
-      document.addEventListener("change", (e) => {
-        if (e.target.id === "langsel") setLang(e.target.value);
+      function setPicker(open) {
+        $("#lang-picker").classList.toggle("open", open);
+        $("#lang-trigger").setAttribute("aria-expanded", String(open));
+      }
+      $("#lang-trigger").addEventListener("click", (e) => {
+        e.stopPropagation();
+        setPicker(!$("#lang-picker").classList.contains("open"));
       });
+
       document.addEventListener("click", (e) => {
         const g = e.target;
         let el;
+        if ((el = g.closest("[data-lang]"))) {
+          setPicker(false);
+          if (el.dataset.lang !== lang) setLang(el.dataset.lang);
+          return;
+        }
+        if (!g.closest("#lang-picker")) setPicker(false);
         if ((el = g.closest("[data-dock]"))) {
           const a = APPS.find((x) => x.id === el.dataset.dock);
           return a.el.classList.contains("open") && topId === a.id
@@ -1648,7 +2099,10 @@
           if (e.key === "ArrowRight") openViewer(cur + 1);
           return;
         }
-        if (e.key === "Escape" && topId) closeApp(topId);
+        if (e.key === "Escape") {
+          setPicker(false);
+          if (topId) closeApp(topId);
+        }
       });
 
       /* ---------- Clock ---------- */
@@ -1691,9 +2145,14 @@
       boot.addEventListener("click", endBoot);
 
       /* ---------- Start ---------- */
-      setLang(detectLang());
+      loadFonts();
+      setLang(detectLang(), false);
       loadDiscord();
-      setInterval(loadDiscord, 60000);
+      connectLanyard();
+      setInterval(() => {
+        if (!discordSocket || discordSocket.readyState !== WebSocket.OPEN)
+          loadDiscord();
+      }, 60000);
     </script>
   </body>
 </html>
