@@ -372,6 +372,30 @@
       }
       .win.open {
         display: flex;
+        animation: window-open 220ms steps(5, end) both;
+        transform-origin: center;
+      }
+      @keyframes window-open {
+        0% {
+          opacity: 0;
+          transform: translateY(12px) scale(0.94);
+          clip-path: inset(50% 0 50% 0);
+        }
+        55% {
+          opacity: 1;
+          transform: translateY(-2px) scale(1.01);
+          clip-path: inset(0 0 0 0);
+        }
+        100% {
+          opacity: 1;
+          transform: translateY(0) scale(1);
+          clip-path: inset(0 0 0 0);
+        }
+      }
+      @media (prefers-reduced-motion: reduce) {
+        .win.open {
+          animation: none;
+        }
       }
       .title {
         display: flex;
@@ -489,7 +513,8 @@
         width: 100%;
         height: 100%;
         object-fit: cover;
-        object-position: center;
+        object-position: center 35%;
+        image-rendering: auto;
       }
       .dcin {
         padding: 0 18px 18px;
@@ -577,59 +602,32 @@
       .dc-devices {
         display: inline-flex;
         align-items: center;
-        flex-wrap: wrap;
-        gap: 5px;
+        gap: 7px;
+        margin-left: 2px;
       }
       .dc-device {
-        display: inline-flex;
+        display: none;
+        width: 27px;
+        height: 27px;
         align-items: center;
-        gap: 4px;
-        padding: 3px 5px;
+        justify-content: center;
+        color: var(--device-status, var(--S));
+        background: var(--w);
         border: 2px solid var(--k);
-        background: var(--panel);
-        font-size: 16px;
-        line-height: 1;
+        box-shadow: 2px 2px 0 var(--k);
       }
-      .dc-device-pixel {
-        width: 10px;
-        height: 10px;
-        display: inline-block;
-        background: var(--S);
-        box-shadow:
-          3px 0 var(--S),
-          0 3px var(--S),
-          3px 3px var(--S);
+      .dc-device.active {
+        display: inline-flex;
+      }
+      .dc-device svg {
+        width: 19px;
+        height: 19px;
+        display: block;
+        fill: currentColor;
+        shape-rendering: crispEdges;
         image-rendering: pixelated;
       }
-      .dc-device.active .dc-device-pixel {
-        background: var(--device-status);
-        box-shadow:
-          3px 0 var(--device-status),
-          0 3px var(--device-status),
-          3px 3px var(--device-status);
-      }
-      .hdl {
-        color: var(--S);
-        font-size: 24px;
-      }
-      .stt {
-        margin-top: 8px;
-        font-size: 22px;
-      }
-      .bio {
-        margin-top: 12px;
-        font-size: 24px;
-        line-height: 1.2;
-        padding: 10px;
-        background: var(--w);
-        border: 3px solid var(--k);
-      }
-      .dc-section-title {
-        margin-top: 16px;
-        margin-bottom: 7px;
-        font-family: var(--px);
-        font-size: 9px;
-      }
+
       .dc-activities {
         display: grid;
         gap: 8px;
@@ -1719,15 +1717,62 @@
         const rest = fetchJSON("https://api.lanyard.rest/v1/users/" + d.id)
           .then((j) => j.success && setLive(j.data))
           .catch(() => {});
-        const look = lookup
-          ? null
-          : fetchJSON("https://discordlookup.mesalytic.moe/v1/user/" + d.id)
-              .then((j) => {
-                lookup = j;
-                store.set("dlookup", JSON.stringify(j));
+        const look = (async () => {
+          if (!lookup) {
+            try {
+              lookup = await fetchJSON(
+                "https://discordlookup.mesalytic.moe/v1/user/" + d.id,
+              );
+              store.set("dlookup", JSON.stringify(lookup));
+              fillApp("profile");
+            } catch (e) {}
+          }
+          const currentUser = lookup && (lookup.user || lookup);
+          const currentBanner = currentUser && currentUser.banner;
+          const hasBanner = !!(
+            lookup &&
+            (lookup.banner_url ||
+              lookup.bannerUrl ||
+              (currentBanner &&
+                (typeof currentBanner === "string"
+                  ? currentBanner
+                  : currentBanner.link ||
+                    currentBanner.url ||
+                    currentBanner.id ||
+                    currentBanner.hash)))
+          );
+          const hasBio = !!(
+            lookup &&
+            (lookup.bio ||
+              lookup.about_me ||
+              (currentUser && (currentUser.bio || currentUser.about_me)))
+          );
+          if (!hasBanner || !hasBio) {
+            try {
+              const fallback = await fetchJSON(
+                "https://discord-lookup.lookupbotdc.workers.dev/search/" + d.id,
+              );
+              if (
+                fallback &&
+                (fallback.user ||
+                  fallback.banner_url ||
+                  fallback.bio ||
+                  fallback.about_me)
+              ) {
+                lookup = {
+                  ...(lookup || {}),
+                  ...fallback,
+                  user: {
+                    ...((lookup && lookup.user) || {}),
+                    ...((fallback && fallback.user) || {}),
+                  },
+                };
+                store.set("dlookup", JSON.stringify(lookup));
                 fillApp("profile");
-              })
-              .catch(() => {});
+              }
+            } catch (e) {}
+          }
+        })();
         await Promise.all([rest, look]);
       }
 
@@ -1815,16 +1860,33 @@
 
       function discordImage(value, id, type) {
         if (!value) return "";
+        let animated = false;
         if (typeof value === "object") {
+          animated = !!(value.is_animated || value.animated);
           const direct = value.link || value.url || value.image || value.src;
-          if (typeof direct === "string" && /^https?:\/\//i.test(direct))
-            return direct;
-          value = value.id || value.hash || value.asset || value.banner || "";
+          if (typeof direct === "string" && /^https?:\/\//i.test(direct)) {
+            value = direct;
+          } else {
+            value = value.id || value.hash || value.asset || value.banner || "";
+          }
         }
-        if (typeof value !== "string") return "";
-        if (/^https?:\/\//i.test(value)) return value;
-        if (!id || !value) return "";
-        const ext = value.startsWith("a_") ? "gif" : "png";
+        if (typeof value !== "string" || !value) return "";
+        const ext = animated || value.startsWith("a_") ? "gif" : "png";
+        if (/^https?:\/\//i.test(value)) {
+          if (/cdn\.discordapp\.com\/banners\//i.test(value)) {
+            const clean = value.split("?")[0];
+            if (!/\.(png|jpe?g|gif|webp)$/i.test(clean))
+              return `${clean}.${ext}?size=1024`;
+            return (
+              clean +
+              (value.includes("?")
+                ? "?" + value.split("?").slice(1).join("?")
+                : "")
+            );
+          }
+          return value;
+        }
+        if (!id) return "";
         return `https://cdn.discordapp.com/${type}/${id}/${value}.${ext}?size=1024`;
       }
 
@@ -1847,10 +1909,18 @@
         else if (lu && lu.avatar && lu.avatar.link) avatar = lu.avatar.link;
         const rawBanner =
           (u && u.banner) ||
-          nestedValue(profile, ["banner", "banner_url"]) ||
-          nestedValue(lookup, ["banner", "banner_url"]) ||
+          nestedValue(profile, ["banner_url", "banner"]) ||
+          nestedValue(lookup, ["banner_url", "bannerUrl", "banner"]) ||
           "";
-        const banner = discordImage(rawBanner, d.id, "banners");
+        const banner =
+          discordImage(rawBanner, d.id, "banners") ||
+          (lookup &&
+            discordImage(
+              lookup.banner_url || lookup.bannerUrl,
+              d.id,
+              "banners",
+            )) ||
+          "";
         const decoration =
           u && u.avatar_decoration_data && u.avatar_decoration_data.asset
             ? `https://cdn.discordapp.com/avatar-decoration-presets/${u.avatar_decoration_data.asset}.png?size=256`
@@ -1864,7 +1934,8 @@
             : "";
         const bio =
           nestedValue(profile, ["bio", "about_me", "description"]) ||
-          nestedValue(lookup, ["bio", "about_me"]) ||
+          nestedValue(lookup, ["bio", "about_me", "description"]) ||
+          nestedValue(lu, ["bio", "about_me", "description"]) ||
           "";
         return {
           name,
@@ -1936,9 +2007,18 @@
         const guildTag = p.guildTag
           ? `<span class="dc-guild-tag">${p.guildTagIcon ? `<img src="${esc(p.guildTagIcon)}" alt="" onerror="this.remove()">` : ""}${esc(p.guildTag)}</span>`
           : "";
-        const device = (label, active) =>
-          `<span class="dc-device${active ? " active" : ""}" style="--device-status:${statusColor}"><i class="dc-device-pixel"></i>${label}</span>`;
-        const devices = `<span class="dc-devices">${device("Desktop", p.devices.desktop)}${device("Web", p.devices.web)}${device("Mobile", p.devices.mobile)}</span>`;
+        const device = (kind, active, label) => {
+          if (!active) return "";
+          const paths = {
+            desktop:
+              '<rect x="2" y="2" width="12" height="9"/><rect x="7" y="11" width="2" height="2"/><rect x="4" y="13" width="8" height="1"/><rect x="4" y="4" width="8" height="5" fill="var(--panel)"/>',
+            web: '<rect x="1" y="2" width="14" height="12"/><rect x="1" y="2" width="14" height="3"/><rect x="3" y="3" width="1" height="1" fill="var(--panel)"/><rect x="5" y="3" width="1" height="1" fill="var(--panel)"/><rect x="7" y="3" width="1" height="1" fill="var(--panel)"/><rect x="3" y="7" width="10" height="1" fill="var(--panel)"/><rect x="3" y="9" width="7" height="1" fill="var(--panel)"/>',
+            mobile:
+              '<rect x="4" y="1" width="8" height="14"/><rect x="5" y="3" width="6" height="9" fill="var(--panel)"/><rect x="7" y="13" width="2" height="1" fill="var(--panel)"/>',
+          };
+          return `<span class="dc-device active" style="--device-status:${statusColor}" title="${label}" aria-label="${label}"><svg viewBox="0 0 16 16" aria-hidden="true">${paths[kind]}</svg></span>`;
+        };
+        const devices = `<span class="dc-devices">${device("desktop", p.devices.desktop, "Desktop")}${device("web", p.devices.web, "Web")}${device("mobile", p.devices.mobile, "Mobile")}</span>`;
         return `<div class="dc"><div class="banner">${p.banner ? `<img src="${esc(p.banner)}" alt="Discord banner" onerror="this.remove()">` : ""}</div><div class="dcin"><div class="av">${sprite("profile", 56)}<img class="avatar-image" src="${esc(p.avatar)}" alt="" onerror="this.remove()">${p.decoration ? `<img class="avatar-decoration" src="${esc(p.decoration)}" alt="" onerror="this.remove()">` : ""}<i class="dot ${statusClass}"></i></div><div class="dc-name-line"><h2>${esc(p.name)}</h2>${guildTag}${devices}</div><p class="hdl">@${esc(p.handle)}</p>${p.bio ? `<p class="bio">${esc(p.bio)}</p>` : ""}${activitySection}<div class="row"><a class="btn pri" href="${link}" target="_blank" rel="noopener">${esc(ui("open"))}</a><button class="btn" data-copy="${esc(p.handle)}">${esc(ui("copy"))}</button></div></div></div>`;
       }
 
