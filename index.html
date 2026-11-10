@@ -468,7 +468,10 @@
       }
       .banner {
         position: relative;
+        flex: 0 0 84px;
+        width: 100%;
         height: 84px;
+        min-height: 84px;
         background: conic-gradient(
             #3b5dc9 25%,
             #2f4ba8 0 50%,
@@ -482,9 +485,11 @@
       .banner img {
         position: absolute;
         inset: 0;
+        display: block;
         width: 100%;
         height: 100%;
         object-fit: cover;
+        object-position: center;
       }
       .dcin {
         padding: 0 18px 18px;
@@ -1764,10 +1769,23 @@
         if (u && u.avatar)
           avatar = `https://cdn.discordapp.com/avatars/${d.id}/${u.avatar}.${u.avatar.startsWith("a_") ? "gif" : "png"}?size=512`;
         else if (lu && lu.avatar && lu.avatar.link) avatar = lu.avatar.link;
+        const rawBanner = (lu && lu.banner) || (u && u.banner) || "";
+        const bannerHash =
+          typeof rawBanner === "string"
+            ? rawBanner
+            : rawBanner &&
+              (rawBanner.id || rawBanner.hash || rawBanner.asset || "");
+        const bannerLink =
+          typeof rawBanner === "object" && rawBanner
+            ? rawBanner.link || rawBanner.url || rawBanner.image || ""
+            : "";
         const bannerValue =
-          (lu && lu.banner && (lu.banner.link || lu.banner)) ||
-          (u && u.banner
-            ? `https://cdn.discordapp.com/banners/${d.id}/${u.banner}.png?size=1024`
+          (typeof bannerLink === "string" && bannerLink) ||
+          (typeof rawBanner === "string" && /^https?:\/\//i.test(rawBanner)
+            ? rawBanner
+            : "") ||
+          (bannerHash
+            ? `https://cdn.discordapp.com/banners/${d.id}/${bannerHash}.${String(bannerHash).startsWith("a_") ? "gif" : "png"}?size=1024`
             : "");
         const decoration =
           u && u.avatar_decoration_data && u.avatar_decoration_data.asset
