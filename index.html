@@ -31,8 +31,8 @@
         --d: #333c57;
         --n: #29366f;
         --panel: #dfe6ee;
-        --px: "Press Start 2P", ui-monospace, monospace;
-        --vt: "VT323", ui-monospace, monospace;
+        --px: "Press Start 2P", "Noto Sans", "Segoe UI", sans-serif;
+        --vt: "VT323", "Noto Sans", "Segoe UI", sans-serif;
       }
       * {
         box-sizing: border-box;
@@ -49,10 +49,10 @@
         font-size: 22px;
         line-height: 1.15;
         -webkit-font-smoothing: none;
-        font-smooth: never;
         user-select: none;
       }
-      button {
+      button,
+      select {
         font: inherit;
         color: inherit;
         background: none;
@@ -70,8 +70,11 @@
       img {
         image-rendering: auto;
       }
+      :focus-visible {
+        outline: 3px dashed var(--c);
+        outline-offset: 2px;
+      }
 
-      /* ---------- CRT overlay ---------- */
       .crt {
         position: fixed;
         inset: 0;
@@ -80,7 +83,7 @@
         background: repeating-linear-gradient(#0000 0 3px, #0000001f 3px 4px);
       }
 
-      /* ---------- BOOT ---------- */
+      /* BOOT */
       #boot {
         position: fixed;
         inset: 0;
@@ -133,7 +136,7 @@
         }
       }
 
-      /* ---------- TOP BAR ---------- */
+      /* TOP BAR */
       #bar {
         position: fixed;
         top: 0;
@@ -169,26 +172,33 @@
         align-items: center;
         gap: 12px;
       }
-      #lang {
-        display: flex;
+      #langsel {
+        background: var(--k);
+        color: var(--w);
         border: 3px solid var(--w);
-      }
-      #lang button {
-        padding: 5px 8px;
         font-family: var(--px);
         font-size: 9px;
-        color: var(--w);
+        padding: 5px 6px;
+        max-width: 130px;
       }
-      #lang button.on {
-        background: var(--y);
-        color: var(--k);
+      #langsel option {
+        font-family: sans-serif;
+      }
+      #tr-state {
+        color: var(--y);
+        font-size: 8px;
+        display: none;
+      }
+      #tr-state.on {
+        display: inline;
+        animation: bl 0.8s steps(2) infinite;
       }
       #clock {
         min-width: 50px;
         text-align: right;
       }
 
-      /* ---------- DESKTOP ---------- */
+      /* DESKTOP */
       #desk {
         position: fixed;
         inset: 40px 0 96px 0;
@@ -270,7 +280,7 @@
         box-shadow: 2px 2px 0 var(--k);
       }
 
-      /* ---------- WINDOWS ---------- */
+      /* WINDOWS */
       .win {
         position: absolute;
         display: none;
@@ -377,7 +387,8 @@
         box-shadow: 4px 4px 0 var(--k);
       }
       .banner {
-        height: 74px;
+        position: relative;
+        height: 84px;
         background: conic-gradient(
             #3b5dc9 25%,
             #2f4ba8 0 50%,
@@ -386,6 +397,14 @@
           )
           0 0/16px 16px;
         border-bottom: 4px solid var(--k);
+        overflow: hidden;
+      }
+      .banner img {
+        position: absolute;
+        inset: 0;
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
       }
       .dcin {
         padding: 0 18px 18px;
@@ -442,6 +461,18 @@
       .stt {
         margin-top: 8px;
         font-size: 22px;
+      }
+      .act {
+        margin-top: 8px;
+        padding: 8px 10px;
+        background: var(--w);
+        border: 3px solid var(--k);
+        font-size: 22px;
+      }
+      .act small {
+        display: block;
+        color: var(--S);
+        font-size: 18px;
       }
       .bio {
         margin-top: 12px;
@@ -578,7 +609,7 @@
       }
       .gi {
         display: block;
-        text-align: left;
+        text-align: start;
         background: var(--w);
         border: 4px solid var(--k);
         box-shadow: 4px 4px 0 var(--k);
@@ -708,7 +739,7 @@
         padding: 40px;
       }
 
-      /* ---------- DOCK ---------- */
+      /* DOCK */
       #dock {
         position: fixed;
         left: 50%;
@@ -752,7 +783,6 @@
         display: block;
       }
 
-      /* ---------- MOBILE ---------- */
       @media (max-width: 700px) {
         #bar {
           font-size: 8px;
@@ -791,7 +821,8 @@
         }
       }
       @media (prefers-reduced-motion: reduce) {
-        #boot .blink {
+        #boot .blink,
+        #tr-state.on {
           animation: none;
         }
       }
@@ -801,16 +832,18 @@
     <div id="boot">
       <h1>LYRIQ OS</h1>
       <div id="seg"></div>
-      <p id="bootp">booting…</p>
-      <p class="blink" id="bootskip"></p>
+      <p id="bootp">Booting…</p>
+      <p class="blink" id="bootskip">click to skip</p>
     </div>
 
     <div id="bar">
       <span class="brand">LYRIQ OS</span>
       <span id="act"></span>
-      <span class="right"
-        ><span id="lang"></span><span id="clock">--:--</span></span
-      >
+      <span class="right">
+        <span id="tr-state">…</span>
+        <select id="langsel" aria-label="Language"></select>
+        <span id="clock">--:--</span>
+      </span>
     </div>
 
     <div id="desk">
@@ -823,38 +856,33 @@
 
     <script>
       /* =========================================================
-   ✏️  CONFIGURATION — modify everything here
-   Texts are written as { en: "...", fr: "..." }
+   CONFIGURATION
+   Write every text in ENGLISH only. It is translated
+   automatically (Google Translate) into the visitor's language.
+   To force a manual translation, add it in OVERRIDES below.
    ========================================================= */
       const CONFIG = {
-        name: "Lyriqalc",
-        role: {
-          en: "Your role / what you do",
-          fr: "Ton métier / ce que tu fais",
-        },
-        avatar: "img/avatar.png", // your profile picture (put it in the img/ folder)
+        name: "lyriqalc",
+        role: "Roblox Developer",
+        avatar: "img/avatar.png",
 
-        /* ----- PROFILE window (your Discord card) ----- */
         discord: {
-          id: "YOUR_DISCORD_ID", // your numeric Discord ID (see the guide)
-          username: "your_username", // shown as @your_username
-          displayName: "Lyriqalc",
-          avatar: "img/avatar.png", // used if live avatar isn't available
-          live: false, // true = live status via Lanyard (see the guide)
-          bio: {
-            en: "A short sentence about you.",
-            fr: "Une courte phrase sur toi.",
-          },
+          id: "1089541365278457926",
+          username: "lyriqalc",
+          displayName: "lyriqalc",
+          avatar: "img/avatar.png",
+          live: true, // Lanyard (live status) + Discord Lookup (fallback)
+          bio: "Hey! I'm lyriqalc! A French Roblox Developer. Currently working on a project called 'Banff, Alberta'.",
         },
 
-        /* ----- SOCIAL window ----- */
-        /* icon: discord | x | instagram | youtube | github | mail | link */
+        /* icon: discord | x | instagram | youtube | github | mail | link
+           Entries still containing "your_" or "you@" are hidden automatically. */
         socials: [
           {
             icon: "discord",
             label: "Discord",
-            handle: "@your_username",
-            url: "https://discord.com/users/YOUR_DISCORD_ID",
+            handle: "@lyriqalc",
+            url: "https://discord.com/users/1089541365278457926",
           },
           {
             icon: "x",
@@ -888,124 +916,99 @@
           },
         ],
 
-        /* ----- ABOUT window ----- */
-        tags: [
-          { en: "Skill one", fr: "Compétence un" },
-          { en: "Skill two", fr: "Compétence deux" },
-          { en: "Skill three", fr: "Compétence trois" },
-        ],
+        tags: ["Building", "UI Designing"],
         about: [
-          {
-            en: "Hi, I'm Lyriqalc! Introduce yourself here in one or two sentences.",
-            fr: "Salut, moi c'est Lyriqalc ! Présente-toi ici en une ou deux phrases.",
-          },
-          {
-            en: "Second paragraph: what you love doing and what you are looking for.",
-            fr: "Deuxième paragraphe : ce que tu aimes faire et ce que tu cherches.",
-          },
+          "Hey! I'm lyriqalc! A French Roblox Developer. Currently working on a project called 'Banff, Alberta'.",
+          "I love working on multiple projects, but it takes some time! I'm also looking for developers to help me with Banff!",
         ],
         stats: [
-          { value: "10+", label: { en: "Projects", fr: "Projets" } },
-          { value: "2021", label: { en: "Since", fr: "Depuis" } },
-          { value: "17", label: { en: "Age", fr: "Âge" } },
+          { value: "10+", label: "Projects" },
+          { value: "2023", label: "Since" },
+          { value: "16", label: "Age" },
         ],
 
-        /* ----- SKILLS window (level 0 → 100) ----- */
         skills: [
           {
-            name: { en: "Skill one", fr: "Compétence un" },
-            note: { en: "A few words", fr: "Quelques mots" },
-            level: 90,
-          },
-          {
-            name: { en: "Skill two", fr: "Compétence deux" },
-            note: { en: "A few words", fr: "Quelques mots" },
+            name: "Building",
+            note: "I can build simple things, but not very hard things.",
             level: 70,
           },
           {
-            name: { en: "Skill three", fr: "Compétence trois" },
-            note: { en: "A few words", fr: "Quelques mots" },
-            level: 50,
+            name: "UI Designing",
+            note: "I can design simple UIs using Figma/Roblox Studio. I can also design UIs based on a request.",
+            level: 70,
           },
         ],
 
-        /* ----- WORKS window (your images go in img/) ----- */
         works: [
           {
-            title: { en: "Project one", fr: "Projet un" },
-            desc: { en: "Short description.", fr: "Courte description." },
+            title: "House in Banff",
+            desc: "Little house in Banff, Alberta.",
             img: "img/project1.jpg",
             link: "",
           },
           {
-            title: { en: "Project two", fr: "Projet deux" },
-            desc: { en: "Short description.", fr: "Courte description." },
+            title: "Pharmacy",
+            desc: "Built a realistic pharmacy for a game.",
             img: "img/project2.jpg",
-            link: "",
-          },
-          {
-            title: { en: "Project three", fr: "Projet trois" },
-            desc: { en: "Short description.", fr: "Courte description." },
-            img: "img/project3.jpg",
-            link: "",
-          },
-          {
-            title: { en: "Project four", fr: "Projet quatre" },
-            desc: { en: "Short description.", fr: "Courte description." },
-            img: "img/project4.jpg",
             link: "",
           },
         ],
       };
 
-      /* Interface texts (FR / EN only) */
-      const UI = {
-        en: {
-          profile: "Profile",
-          social: "Social",
-          about: "About",
-          works: "Works",
-          skills: "Skills",
-          open: "Open on Discord ↗",
-          copy: "Copy @user",
-          copied: "Copied!",
-          visit: "Visit ↗",
-          prev: "◀",
-          next: "▶",
-          online: "Online",
-          idle: "Away",
-          dnd: "Do not disturb",
-          offline: "Offline",
-          loading: "Connecting…",
-          boot: "Booting…",
-          skip: "click to skip",
-          ready: "Ready!",
-        },
+      /* Optional manual fixes: { langCode: { "English text": "Your text" } } */
+      const OVERRIDES = {
         fr: {
-          profile: "Profil",
-          social: "Social",
-          about: "À propos",
-          works: "Projets",
-          skills: "Compétences",
-          open: "Ouvrir sur Discord ↗",
-          copy: "Copier @pseudo",
-          copied: "Copié !",
-          visit: "Voir ↗",
-          prev: "◀",
-          next: "▶",
-          online: "En ligne",
-          idle: "Absent",
-          dnd: "Ne pas déranger",
-          offline: "Hors ligne",
-          loading: "Connexion…",
-          boot: "Démarrage…",
-          skip: "cliquer pour passer",
-          ready: "Prêt !",
+          Building: "Building",
+          "UI Designing": "Design UI",
         },
       };
 
+      /* Languages offered (code = Google Translate code) */
+      const LANGS = [
+        ["en", "English"],
+        ["fr", "Français"],
+        ["es", "Español"],
+        ["de", "Deutsch"],
+        ["it", "Italiano"],
+        ["pt", "Português"],
+        ["nl", "Nederlands"],
+        ["pl", "Polski"],
+        ["tr", "Türkçe"],
+        ["ru", "Русский"],
+        ["ar", "العربية"],
+        ["ja", "日本語"],
+        ["ko", "한국어"],
+        ["zh-CN", "中文"],
+      ];
+      const RTL = ["ar"];
+
+      const UI = {
+        profile: "Profile",
+        social: "Social",
+        about: "About",
+        works: "Works",
+        skills: "Skills",
+        open: "Open on Discord ↗",
+        copy: "Copy @user",
+        copied: "Copied!",
+        visit: "Visit ↗",
+        prev: "◀",
+        next: "▶",
+        online: "Online",
+        idle: "Away",
+        dnd: "Do not disturb",
+        offline: "Offline",
+        loading: "Connecting…",
+        boot: "Booting…",
+        skip: "click to skip",
+        ready: "Ready!",
+        playing: "Playing",
+        listening: "Listening to Spotify",
+      };
+
       /* =========================================================
-   Pixel sprites (12×12). Letters = palette colors.
+   Pixel sprites
    ========================================================= */
       const PAL = {
         k: "#1a1c2c",
@@ -1043,17 +1046,17 @@
         social: [
           "............",
           ".kkkkkkkkkk.",
-          ".kccccccccck".slice(0, 12),
+          ".kccccccccck",
           ".kckckckcck.",
-          ".kccccccccck".slice(0, 12),
-          ".kccccccccck".slice(0, 12),
+          ".kccccccccck",
+          ".kccccccccck",
           ".kkkkkkkkkk.",
           "...kck......",
           "....kk......",
           "............",
           "............",
           "............",
-        ],
+        ].map((r) => r.slice(0, 12).padEnd(12, ".")),
         about: [
           "..kkkkkkkk..",
           "..kwwwwwwk..",
@@ -1123,7 +1126,7 @@
           ".kbbbbbbbbk.",
           "..kk....kk..",
           "............",
-        ],
+        ].map((r) => r.slice(0, 12).padEnd(12, ".")),
         x: [
           "............",
           ".kk......kk.",
@@ -1210,7 +1213,7 @@
       }
 
       /* =========================================================
-   Site code — you normally don't need to touch below
+   Core
    ========================================================= */
       const $ = (s, r = document) => r.querySelector(s);
       const esc = (s) =>
@@ -1218,46 +1221,187 @@
           /[&<>"]/g,
           (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c],
         );
-      let lang = "en";
-      try {
-        const s = localStorage.getItem("lang");
-        if (s === "fr" || s === "en") lang = s;
-      } catch (e) {}
-      const t = (o) => (o && (o[lang] ?? o.en)) || "";
-      const ui = (k) => UI[lang][k];
+      const store = {
+        get(k) {
+          try {
+            return localStorage.getItem(k);
+          } catch (e) {
+            return null;
+          }
+        },
+        set(k, v) {
+          try {
+            localStorage.setItem(k, v);
+          } catch (e) {}
+        },
+      };
 
-      /* --- live Discord status (optional, via Lanyard) --- */
+      /* ---------- Translation (Google Translate) ---------- */
+      const CODES = LANGS.map((l) => l[0]);
+      let lang = "en";
+      let dict = {};
+      let trToken = 0;
+
+      function detectLang() {
+        const saved = store.get("lang");
+        if (saved && CODES.includes(saved)) return saved;
+        const nav = (navigator.language || "en").toLowerCase();
+        return (
+          CODES.find((c) => c.toLowerCase() === nav) ||
+          CODES.find((c) => c.toLowerCase() === nav.split("-")[0]) ||
+          "en"
+        );
+      }
+
+      function sourceStrings() {
+        const set = new Set(Object.values(UI));
+        const add = (s) => s && set.add(String(s));
+        add(CONFIG.role);
+        add(CONFIG.discord.bio);
+        CONFIG.socials.forEach((s) => add(s.label));
+        CONFIG.tags.forEach(add);
+        CONFIG.about.forEach(add);
+        CONFIG.stats.forEach((s) => add(s.label));
+        CONFIG.skills.forEach((s) => (add(s.name), add(s.note)));
+        CONFIG.works.forEach((w) => (add(w.title), add(w.desc)));
+        return [...set].filter((s) => /[A-Za-z]{2}/.test(s));
+      }
+
+      async function googleTranslate(text, to) {
+        const url =
+          "https://translate.googleapis.com/translate_a/single?client=gtx&sl=en&dt=t&tl=" +
+          encodeURIComponent(to) +
+          "&q=" +
+          encodeURIComponent(text);
+        const r = await fetch(url);
+        if (!r.ok) throw new Error("HTTP " + r.status);
+        const j = await r.json();
+        return j[0].map((x) => x[0]).join("");
+      }
+
+      const t = (s) => {
+        if (s == null || s === "") return "";
+        if (lang === "en") return s;
+        return (OVERRIDES[lang] && OVERRIDES[lang][s]) || dict[s] || s;
+      };
+      const ui = (k) => t(UI[k]);
+
+      async function setLang(l) {
+        lang = l;
+        store.set("lang", l);
+        const token = ++trToken;
+        document.documentElement.lang = l;
+        document.documentElement.dir = "ltr";
+        dict = {};
+        if (l !== "en") {
+          try {
+            dict = JSON.parse(store.get("tr_" + l) || "{}");
+          } catch (e) {}
+        }
+        render();
+        if (l === "en") return;
+
+        const todo = sourceStrings().filter(
+          (s) => !dict[s] && !(OVERRIDES[l] && OVERRIDES[l][s]),
+        );
+        if (!todo.length) return;
+        const flag = $("#tr-state");
+        flag.classList.add("on");
+        let i = 0;
+        const worker = async () => {
+          while (i < todo.length && token === trToken) {
+            const s = todo[i++];
+            try {
+              dict[s] = await googleTranslate(s, l);
+            } catch (e) {}
+          }
+        };
+        await Promise.all([worker(), worker(), worker(), worker()]);
+        if (token !== trToken) return;
+        flag.classList.remove("on");
+        store.set("tr_" + l, JSON.stringify(dict));
+        render();
+      }
+
+      /* ---------- Discord (Lanyard + Discord Lookup fallback) ---------- */
       let live = null;
+      let lookup = null;
+
+      async function loadDiscord() {
+        const d = CONFIG.discord;
+        if (!d.live || !/^\d{15,25}$/.test(d.id)) return;
+        try {
+          const r = await fetch("https://api.lanyard.rest/v1/users/" + d.id);
+          const j = await r.json();
+          if (j && j.success) live = j.data;
+        } catch (e) {}
+        if (!lookup) {
+          try {
+            const r = await fetch(
+              "https://discordlookup.mesalytic.moe/v1/user/" + d.id,
+            );
+            if (r.ok) lookup = await r.json();
+          } catch (e) {}
+        }
+        if (live || lookup) fillApp("profile");
+      }
+
+      function profileData() {
+        const d = CONFIG.discord;
+        const u = live && live.discord_user;
+        const name =
+          (u && (u.global_name || u.username)) ||
+          (lookup && (lookup.global_name || lookup.username)) ||
+          d.displayName;
+        const handle =
+          (u && u.username) || (lookup && lookup.username) || d.username;
+        let avatar = d.avatar;
+        if (u && u.avatar)
+          avatar = `https://cdn.discordapp.com/avatars/${d.id}/${u.avatar}.png?size=256`;
+        else if (lookup && lookup.avatar && lookup.avatar.link)
+          avatar = lookup.avatar.link;
+        const banner = lookup && lookup.banner && lookup.banner.link;
+        const acts = (live && live.activities) || [];
+        return {
+          name,
+          handle,
+          avatar,
+          banner,
+          status: live ? live.discord_status : "offline",
+          custom: acts.find((a) => a.type === 4),
+          game: acts.find((a) => a.type === 0),
+          spotify: live && live.listening_to_spotify ? live.spotify : null,
+        };
+      }
 
       function profileBody() {
-        const d = CONFIG.discord,
-          u = live && live.discord_user;
-        const status = live ? live.discord_status : "offline";
-        const name = (u && (u.global_name || u.username)) || d.displayName;
-        const handle = (u && u.username) || d.username;
-        const av =
-          u && u.avatar
-            ? `https://cdn.discordapp.com/avatars/${d.id}/${u.avatar}.png?size=256`
-            : d.avatar;
-        const custom =
-          live && (live.activities || []).find((a) => a.type === 4);
-        const sttTxt = d.live ? (live ? ui(status) : ui("loading")) : "";
+        const d = CONFIG.discord;
+        const p = profileData();
         const link = `https://discord.com/users/${encodeURIComponent(d.id)}`;
-        return `<div class="dc"><div class="banner"></div><div class="dcin">
+        const sttTxt = d.live ? (live ? ui(p.status) : ui("loading")) : "";
+        return `<div class="dc">
+    <div class="banner">${p.banner ? `<img src="${esc(p.banner)}" alt="" onerror="this.remove()">` : ""}</div>
+    <div class="dcin">
     <div class="av">${sprite("profile", 56)}
-      <img src="${esc(av)}" alt="" onerror="this.remove()">
-      ${d.live ? `<i class="dot s-${esc(status)}"></i>` : ""}</div>
-    <h2>${esc(name)}</h2>
-    <p class="hdl">@${esc(handle)}</p>
-    ${sttTxt ? `<p class="stt">■ ${esc(sttTxt)}${custom && custom.state ? " — " + esc(custom.state) : ""}</p>` : ""}
+      <img src="${esc(p.avatar)}" alt="" onerror="this.remove()">
+      ${live ? `<i class="dot s-${esc(p.status)}"></i>` : ""}</div>
+    <h2>${esc(p.name)}</h2>
+    <p class="hdl">@${esc(p.handle)}</p>
+    ${sttTxt ? `<p class="stt">■ ${esc(sttTxt)}${p.custom && p.custom.state ? " — " + esc(p.custom.state) : ""}</p>` : ""}
+    ${p.spotify ? `<p class="act"><small>${esc(ui("listening"))}</small>${esc(p.spotify.song)} — ${esc(p.spotify.artist)}</p>` : ""}
+    ${p.game ? `<p class="act"><small>${esc(ui("playing"))}</small>${esc(p.game.name)}</p>` : ""}
     <p class="bio">${esc(t(d.bio))}</p>
     <div class="row">
-      <a class="btn pri" href="${link}" target="_blank" rel="noopener">${ui("open")}</a>
-      <button class="btn" data-copy="${esc(handle)}">${ui("copy")}</button>
+      <a class="btn pri" href="${link}" target="_blank" rel="noopener">${esc(ui("open"))}</a>
+      <button class="btn" data-copy="${esc(p.handle)}">${esc(ui("copy"))}</button>
     </div></div></div>`;
       }
+
+      const isPlaceholder = (s) =>
+        /your_|you@email|your channel/i.test(s.url + " " + s.handle);
       function socialBody() {
         return `<div class="soc">${CONFIG.socials
+          .filter((s) => !isPlaceholder(s))
           .map(
             (s) => `
     <a href="${esc(s.url)}" target="_blank" rel="noopener">
@@ -1326,7 +1470,6 @@
         topId = null,
         placed = 0;
 
-      /* --- build windows --- */
       APPS.forEach((a) => {
         const el = document.createElement("section");
         el.className = "win";
@@ -1366,11 +1509,11 @@
       function fillApp(id) {
         const a = APPS.find((x) => x.id === id);
         $(".tt", a.el).textContent = ui(a.id).toUpperCase();
-        $(".body", a.el).innerHTML = a.body();
+        const body = $(".body", a.el);
+        body.dir = RTL.includes(lang) ? "rtl" : "ltr";
+        body.innerHTML = a.body();
       }
-      function fillAll() {
-        APPS.forEach((a) => fillApp(a.id));
-      }
+      const fillAll = () => APPS.forEach((a) => fillApp(a.id));
 
       function chrome() {
         $("#icons").innerHTML = APPS.map(
@@ -1381,12 +1524,19 @@
           (a) =>
             `<button class="dk" data-dock="${a.id}" title="${esc(ui(a.id))}" aria-label="${esc(ui(a.id))}">${sprite(a.icon, 36)}</button>`,
         ).join("");
-        $("#lang").innerHTML =
-          `<button data-lang="en" class="${lang === "en" ? "on" : ""}">EN</button><button data-lang="fr" class="${lang === "fr" ? "on" : ""}">FR</button>`;
+        $("#langsel").innerHTML = LANGS.map(
+          ([c, n]) =>
+            `<option value="${c}"${c === lang ? " selected" : ""}>${n}</option>`,
+        ).join("");
         $("#bootskip").textContent = ui("skip");
-        document.documentElement.lang = lang;
         refresh();
       }
+      const render = () => {
+        fillAll();
+        chrome();
+        tick();
+      };
+
       function refresh() {
         APPS.forEach((a) => {
           const d = $(`[data-dock="${a.id}"]`);
@@ -1432,7 +1582,7 @@
         refresh();
       }
 
-      /* --- viewer (works) --- */
+      /* ---------- Works viewer ---------- */
       const viewer = $("#viewer");
       let cur = 0;
       function openViewer(i) {
@@ -1444,7 +1594,7 @@
     <div class="body"><div class="vimg"><div class="ph">${sprite("works", 96)}</div></div>
       <p style="font-size:26px">${esc(t(w.desc))}</p>
       <div class="row" style="margin-top:4px"><button class="btn" data-vp>${ui("prev")}</button><button class="btn" data-vn>${ui("next")}</button>
-      ${w.link ? `<a class="btn pri" href="${esc(w.link)}" target="_blank" rel="noopener">${ui("visit")}</a>` : ""}</div></div></div>`;
+      ${w.link ? `<a class="btn pri" href="${esc(w.link)}" target="_blank" rel="noopener">${esc(ui("visit"))}</a>` : ""}</div></div></div>`;
         const im = new Image();
         im.alt = t(w.title);
         im.onload = () => {
@@ -1459,19 +1609,13 @@
       }
       const closeViewer = () => viewer.classList.remove("open");
 
-      /* --- events --- */
+      /* ---------- Events ---------- */
+      document.addEventListener("change", (e) => {
+        if (e.target.id === "langsel") setLang(e.target.value);
+      });
       document.addEventListener("click", (e) => {
         const g = e.target;
         let el;
-        if ((el = g.closest("[data-lang]"))) {
-          lang = el.dataset.lang;
-          try {
-            localStorage.setItem("lang", lang);
-          } catch (x) {}
-          fillAll();
-          chrome();
-          return;
-        }
         if ((el = g.closest("[data-dock]"))) {
           const a = APPS.find((x) => x.id === el.dataset.dock);
           return a.el.classList.contains("open") && topId === a.id
@@ -1480,8 +1624,7 @@
         }
         if ((el = g.closest("[data-open]"))) return openApp(el.dataset.open);
         if ((el = g.closest("[data-copy]"))) {
-          const txt = el.dataset.copy,
-            old = el.textContent;
+          const txt = el.dataset.copy;
           const done = () => {
             el.textContent = ui("copied");
             setTimeout(() => (el.textContent = ui("copy")), 1500);
@@ -1499,41 +1642,39 @@
         if (g === viewer || g.closest("[data-vx]")) closeViewer();
       });
       document.addEventListener("keydown", (e) => {
-        if (!viewer.classList.contains("open")) return;
-        if (e.key === "Escape") closeViewer();
-        if (e.key === "ArrowLeft") openViewer(cur - 1);
-        if (e.key === "ArrowRight") openViewer(cur + 1);
+        if (viewer.classList.contains("open")) {
+          if (e.key === "Escape") closeViewer();
+          if (e.key === "ArrowLeft") openViewer(cur - 1);
+          if (e.key === "ArrowRight") openViewer(cur + 1);
+          return;
+        }
+        if (e.key === "Escape" && topId) closeApp(topId);
       });
 
-      /* --- clock --- */
-      const tick = () =>
-        ($("#clock").textContent = new Date().toLocaleTimeString(
-          lang === "fr" ? "fr-FR" : "en-GB",
-          { hour: "2-digit", minute: "2-digit" },
-        ));
-      setInterval(tick, 1000);
-      tick();
-
-      /* --- Discord live (Lanyard) --- */
-      async function loadLive() {
-        const d = CONFIG.discord;
-        if (!d.live || !/^\d{15,25}$/.test(d.id)) return;
+      /* ---------- Clock ---------- */
+      function tick() {
+        let txt;
         try {
-          const r = await fetch("https://api.lanyard.rest/v1/users/" + d.id);
-          const j = await r.json();
-          if (j && j.success) {
-            live = j.data;
-            fillApp("profile");
-          }
-        } catch (e) {}
+          txt = new Date().toLocaleTimeString(lang, {
+            hour: "2-digit",
+            minute: "2-digit",
+          });
+        } catch (e) {
+          txt = new Date().toLocaleTimeString([], {
+            hour: "2-digit",
+            minute: "2-digit",
+          });
+        }
+        $("#clock").textContent = txt;
       }
+      setInterval(tick, 1000);
 
-      /* --- boot screen --- */
+      /* ---------- Boot ---------- */
       const seg = $("#seg");
       seg.innerHTML = "<i></i>".repeat(12);
       let n = 0,
-        boot = $("#boot"),
         done = false;
+      const boot = $("#boot");
       const iv = setInterval(() => {
         n++;
         [...seg.children].slice(0, n).forEach((b) => b.classList.add("on"));
@@ -1549,10 +1690,10 @@
       }
       boot.addEventListener("click", endBoot);
 
-      fillAll();
-      chrome();
-      loadLive();
-      setInterval(loadLive, 60000);
+      /* ---------- Start ---------- */
+      setLang(detectLang());
+      loadDiscord();
+      setInterval(loadDiscord, 60000);
     </script>
   </body>
 </html>
